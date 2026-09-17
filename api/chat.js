@@ -19,7 +19,7 @@ Your communication style:
 - When asked to introduce yourself, deliver a polished, succinct JARVIS-style introduction.
 `;
 
-const DEFAULT_MODEL = "gemini-2.5-flash";
+const DEFAULT_MODEL = "gemini-3.6-flash";
 
 function isSearchQuery(message) {
   const keywords = [
