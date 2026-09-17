@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JARVIS // Tactical AI Voice Interface</title>
+    <title>JARVIS // Tactical AI Voice Interface & PC Control</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -28,10 +28,15 @@
                     <span class="status-indicator"></span>
                     <span id="status-text">ONLINE</span>
                 </div>
+                <!-- Local Desktop PC Bridge Indicator -->
+                <div class="bridge-badge bridge-offline" id="bridge-badge" title="Local System Control Bridge (http://localhost:5000)">
+                    <span class="bridge-dot"></span>
+                    <span id="bridge-text">STANDALONE WEB MODE</span>
+                </div>
             </div>
 
             <div class="header-center">
-                <div class="hud-ticker">NEURAL LINK: ACTIVE // SECURE SERVERLESS API</div>
+                <div class="hud-ticker">NEURAL LINK: ACTIVE // DUAL-MODE PC & WEB EXECUTION</div>
             </div>
 
             <div class="header-right">
@@ -93,11 +98,11 @@
                 <div class="telemetry-bar">
                     <div class="stat-item">
                         <span class="stat-label">AI BRAIN</span>
-                        <span class="stat-val" id="model-name-val">GEMINI 2.5</span>
+                        <span class="stat-val" id="model-name-val">GEMINI 3.6</span>
                     </div>
                     <div class="stat-item">
-                        <span class="stat-label">RUNTIME</span>
-                        <span class="stat-val" id="runtime-val">SERVERLESS</span>
+                        <span class="stat-label">PC BRIDGE</span>
+                        <span class="stat-val" id="bridge-stat-val">OFFLINE</span>
                     </div>
                     <div class="stat-item">
                         <span class="stat-label">SPEECH I/O</span>
@@ -109,7 +114,7 @@
             <!-- Right Panel / Tactical Holographic Chat -->
             <section class="chat-section">
                 <div class="chat-header">
-                    <span class="chat-title">COMMUNICATION FEED</span>
+                    <span class="chat-title">COMMUNICATION & ACTION LOG</span>
                     <button id="clear-chat-btn" class="hud-link-btn">CLEAR LOG</button>
                 </div>
 
@@ -122,7 +127,7 @@
                             <span class="timestamp" id="init-time">NOW</span>
                         </div>
                         <div class="msg-content">
-                            Good day. I am JARVIS, your personal AI assistant. How may I assist you today, sir?
+                            Good day. I am JARVIS, your personal AI assistant. Voice and PC control subsystems are online. How may I assist you today, sir?
                         </div>
                     </div>
                 </div>
@@ -159,7 +164,7 @@
                 <button class="quick-btn" data-prompt="Jarvis, what is JavaScript?">
                     <span class="btn-tag">02</span> What is JavaScript?
                 </button>
-                <button class="quick-btn" data-prompt="Jarvis, search the web for the latest AI news.">
+                <button class="quick-btn" data-prompt="Jarvis, search the web for latest AI news.">
                     <span class="btn-tag">03</span> Search AI News
                 </button>
                 <button class="quick-btn" data-prompt="Jarvis, what time is it?">
@@ -167,6 +172,12 @@
                 </button>
                 <button class="quick-btn" data-prompt="Jarvis, open YouTube.">
                     <span class="btn-tag">05</span> Open YouTube
+                </button>
+                <button class="quick-btn" data-prompt="Jarvis, lock my laptop.">
+                    <span class="btn-tag">06</span> 🔒 Lock Workstation
+                </button>
+                <button class="quick-btn" data-prompt="Jarvis, open notepad.">
+                    <span class="btn-tag">07</span> 📝 Open Notepad
                 </button>
             </div>
         </footer>

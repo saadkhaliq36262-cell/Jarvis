@@ -1,6 +1,6 @@
 /**
- * script.js - JARVIS Frontend Controller for Vercel Serverless Architecture
- * Handles Web Speech Recognition, Speech Synthesis, Safe Local Commands, and API interaction.
+ * script.js - JARVIS Frontend Controller with Dual-Mode Execution & Action Feedback
+ * Handles Web Speech Recognition, Speech Synthesis, PC Control Bridge, and UI States.
  */
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -9,10 +9,12 @@ document.addEventListener("DOMContentLoaded", () => {
     const liveDateEl = document.getElementById("live-date");
     const initTimeEl = document.getElementById("init-time");
     const coreStateText = document.getElementById("core-state-text");
-    const systemStatusBadge = document.getElementById("system-status-badge");
     const statusText = document.getElementById("status-text");
     const waveVisualizer = document.getElementById("wave-visualizer");
     const coreSection = document.querySelector(".core-section");
+    const bridgeBadge = document.getElementById("bridge-badge");
+    const bridgeText = document.getElementById("bridge-text");
+    const bridgeStatVal = document.getElementById("bridge-stat-val");
     const speechStatusVal = document.getElementById("speech-status-val");
     const chatLog = document.getElementById("chat-log");
     const chatForm = document.getElementById("chat-form");
@@ -28,9 +30,11 @@ document.addEventListener("DOMContentLoaded", () => {
     // --- State Variables ---
     let voiceEnabled = true;
     let isListening = false;
+    let isBridgeOnline = false;
     let recognition = null;
     let synth = window.speechSynthesis;
     let preferredVoice = null;
+    const LOCAL_BRIDGE_URL = "http://127.0.0.1:5000";
 
     // --- 1. Real-time Clock & Date Display ---
     function updateClock() {
@@ -60,7 +64,43 @@ document.addEventListener("DOMContentLoaded", () => {
         }, duration);
     }
 
-    // --- 3. UI State Management (IDLE, LISTENING, THINKING, SPEAKING, ERROR) ---
+    // --- 3. Local Desktop Bridge Health Poller (http://localhost:5000) ---
+    async function checkLocalBridgeHealth() {
+        try {
+            const res = await fetch(`${LOCAL_BRIDGE_URL}/api/system/status`, {
+                method: "GET",
+                mode: "cors",
+                headers: { "Content-Type": "application/json" }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                if (data.status === "online") {
+                    isBridgeOnline = true;
+                    if (bridgeBadge) {
+                        bridgeBadge.className = "bridge-badge bridge-online";
+                        bridgeText.textContent = "PC BRIDGE: ONLINE";
+                    }
+                    if (bridgeStatVal) bridgeStatVal.textContent = "ONLINE";
+                    return;
+                }
+            }
+        } catch (e) {
+            // Local bridge is offline (normal in standalone web mode)
+        }
+
+        isBridgeOnline = false;
+        if (bridgeBadge) {
+            bridgeBadge.className = "bridge-badge bridge-offline";
+            bridgeText.textContent = "STANDALONE WEB MODE";
+        }
+        if (bridgeStatVal) bridgeStatVal.textContent = "OFFLINE";
+    }
+
+    // Check bridge on load and poll every 8 seconds
+    checkLocalBridgeHealth();
+    setInterval(checkLocalBridgeHealth, 8000);
+
+    // --- 4. UI State Management (IDLE, LISTENING, THINKING, SPEAKING, ERROR) ---
     function setCoreState(state) {
         if (!coreStateText || !coreSection) return;
 
@@ -102,7 +142,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    // --- 4. Speech Synthesis (Voice Output) ---
+    // --- 5. Speech Synthesis (Voice Output) ---
     function initVoiceSynthesis() {
         if (!synth) {
             if (speechStatusVal) speechStatusVal.textContent = "VOICE N/A";
@@ -188,7 +228,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // --- 5. Web Speech Recognition (Voice Input) ---
+    // --- 6. Web Speech Recognition (Voice Input) ---
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
     if (SpeechRecognition) {
@@ -220,7 +260,7 @@ document.addEventListener("DOMContentLoaded", () => {
             userInput.placeholder = "Type a command or click the microphone...";
 
             if (event.error === "not-allowed") {
-                showToast("Microphone access denied. Please allow microphone permissions in Chrome.");
+                showToast("Microphone access denied. Please allow microphone permissions.");
             } else if (event.error !== "no-speech") {
                 showToast(`Speech error: ${event.error}`);
             }
@@ -260,11 +300,47 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    // --- 6. Chat Message Rendering ---
-    function appendMessage(sender, text, groundingSources = []) {
+    // --- 7. Chat Message & Action Feedback Rendering ---
+    function appendMessage(sender, text, action = null, groundingSources = []) {
         const timeStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
         const bubble = document.createElement("div");
         bubble.className = `msg-bubble ${sender.toLowerCase()}-msg`;
+
+        let actionCardHtml = "";
+        if (action && action.type) {
+            let icon = "⚡";
+            let btnLabel = action.label || "EXECUTE ACTION";
+            let isLink = false;
+            let targetUrl = "#";
+
+            if (action.type === "OPEN_URL" || action.type === "WEB_SEARCH") {
+                icon = action.type === "OPEN_URL" ? "🌐" : "🔍";
+                isLink = true;
+                targetUrl = action.target;
+            } else if (action.type === "SYSTEM_LOCK") {
+                icon = "🔒";
+            } else if (action.type === "SYSTEM_APP") {
+                icon = "💻";
+            } else if (action.type === "SYSTEM_VOLUME") {
+                icon = "🔊";
+            }
+
+            actionCardHtml = `
+                <div class="action-feedback-card">
+                    <div class="action-card-info">
+                        <span class="action-card-icon">${icon}</span>
+                        <div class="action-card-text">
+                            <span class="action-card-label">ACTION: ${escapeHtml(action.type)}</span>
+                            <span class="action-card-target">${escapeHtml(action.target || "Local System")}</span>
+                        </div>
+                    </div>
+                    ${isLink 
+                        ? `<a href="${targetUrl}" target="_blank" rel="noopener noreferrer" class="action-card-btn">LAUNCH ↗</a>`
+                        : `<span class="action-card-btn">EXECUTED ✓</span>`
+                    }
+                </div>
+            `;
+        }
 
         let sourcesHtml = "";
         if (groundingSources && groundingSources.length > 0) {
@@ -282,6 +358,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 <span class="timestamp">${timeStr}</span>
             </div>
             <div class="msg-content">${escapeHtml(text)}</div>
+            ${actionCardHtml}
             ${sourcesHtml}
         `;
 
@@ -290,84 +367,144 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function escapeHtml(str) {
-        return str
+        return (str || "")
             .replace(/&/g, "&amp;")
             .replace(/</g, "&lt;")
             .replace(/>/g, "&gt;");
     }
 
-    // --- 7. Safe Predefined Client Commands ---
-    function checkSafeClientCommands(message) {
+    // --- 8. Client Action Executor (Web & PC Control) ---
+    async function executeClientAction(action) {
+        if (!action || !action.type) return null;
+
+        // 1. Browser Actions (Web Mode)
+        if (action.type === "OPEN_URL" || action.type === "WEB_SEARCH") {
+            try {
+                window.open(action.target, "_blank", "noopener,noreferrer");
+            } catch (e) {
+                console.warn("Popup blocked or direct window.open restricted:", e);
+            }
+            return { status: "executed", message: `Opened ${action.label || action.target}` };
+        }
+
+        // 2. PC System Actions (System Mode via Local Bridge)
+        if (action.type === "SYSTEM_LOCK") {
+            if (!isBridgeOnline) {
+                await checkLocalBridgeHealth();
+            }
+
+            if (!isBridgeOnline) {
+                return {
+                    status: "bridge_offline",
+                    fallbackReply: "Local Bridge Agent is offline. Run the Python desktop agent (python desktop_agent/agent.py) on your local machine to enable system controls."
+                };
+            }
+
+            try {
+                const res = await fetch(`${LOCAL_BRIDGE_URL}/api/system/lock`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" }
+                });
+                const data = await res.json();
+                return { status: "executed", data };
+            } catch (err) {
+                return { status: "error", fallbackReply: "Failed to communicate with Local PC Bridge." };
+            }
+        }
+
+        if (action.type === "SYSTEM_APP") {
+            if (!isBridgeOnline) await checkLocalBridgeHealth();
+            if (!isBridgeOnline) {
+                return {
+                    status: "bridge_offline",
+                    fallbackReply: "Local Bridge Agent is offline. Run the Python desktop agent to launch local applications."
+                };
+            }
+            try {
+                await fetch(`${LOCAL_BRIDGE_URL}/api/system/app`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ app: action.target })
+                });
+                return { status: "executed" };
+            } catch (err) {
+                return { status: "error" };
+            }
+        }
+
+        if (action.type === "SYSTEM_VOLUME") {
+            if (!isBridgeOnline) await checkLocalBridgeHealth();
+            if (!isBridgeOnline) {
+                return {
+                    status: "bridge_offline",
+                    fallbackReply: "Local Bridge Agent is offline. Run the Python desktop agent to adjust system volume."
+                };
+            }
+            try {
+                await fetch(`${LOCAL_BRIDGE_URL}/api/system/volume`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ action: action.target })
+                });
+                return { status: "executed" };
+            } catch (err) {
+                return { status: "error" };
+            }
+        }
+
+        return null;
+    }
+
+    // --- 9. Local Fast Check for Time/Date ---
+    function checkLocalTimeCommands(message) {
         const clean = message.toLowerCase()
             .replace(/^(hey\s+|hi\s+|ok\s+)?jarvis[,\s:]*/i, "")
             .trim()
             .replace(/[.?!]+$/, "");
 
-        // 1. YouTube Command
-        const ytPatterns = [
-            /\b(open|launch|start|go to)\s+youtube\b/i,
-            /\byoutube\s+(please|now)\b/i,
-            /^youtube$/i
-        ];
-        if (ytPatterns.some(p => p.test(clean))) {
-            window.open("https://www.youtube.com", "_blank", "noopener,noreferrer");
-            return {
-                reply: "Opening YouTube in a new tab for you now, sir.",
-                speak: true
-            };
-        }
-
-        // 2. Current Time Command
-        const timePatterns = [
-            /\b(what\s+time\s+is\s+it|what['']?s\s+the\s+time|current\s+time|tell\s+me\s+the\s+time|time\s+now)\b/i
-        ];
-        if (timePatterns.some(p => p.test(clean))) {
+        if (/\b(what\s+time\s+is\s+it|what['']?s\s+the\s+time|current\s+time|tell\s+me\s+the\s+time|time\s+now)\b/i.test(clean)) {
             const now = new Date();
             const timeStr = now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit", hour12: true });
             return {
                 reply: `The current time is ${timeStr}.`,
-                speak: true
+                speak: true,
+                action: { type: "GET_TIME", target: timeStr, label: "Current Time" }
             };
         }
 
-        // 3. Current Date Command
-        const datePatterns = [
-            /\b(what\s+is\s+today['']?s\s+date|what['']?s\s+the\s+date|today['']?s\s+date|current\s+date|what\s+day\s+is\s+it)\b/i
-        ];
-        if (datePatterns.some(p => p.test(clean))) {
+        if (/\b(what\s+is\s+today['']?s\s+date|what['']?s\s+the\s+date|today['']?s\s+date|current\s+date|what\s+day\s+is\s+it)\b/i.test(clean)) {
             const now = new Date();
             const options = { weekday: "long", month: "long", day: "numeric", year: "numeric" };
             const dateStr = now.toLocaleDateString("en-US", options);
             return {
                 reply: `Today is ${dateStr}.`,
-                speak: true
+                speak: true,
+                action: { type: "GET_DATE", target: dateStr, label: "Current Date" }
             };
         }
 
         return null;
     }
 
-    // --- 8. Submission Pipeline (Local Safe Commands + Gemini Serverless API) ---
+    // --- 10. Unified Submission Pipeline ---
     async function handleUserSubmission(messageText) {
         if (!messageText || messageText.trim() === "") return;
 
-        // Render User Message
         appendMessage("USER", messageText);
         userInput.value = "";
 
-        // 1. Check local safe commands first (Time, Date, YouTube)
-        const localResult = checkSafeClientCommands(messageText);
-        if (localResult) {
-            appendMessage("JARVIS", localResult.reply);
-            if (localResult.speak && voiceEnabled) {
-                speakText(localResult.reply);
+        // Fast local check for time/date
+        const timeResult = checkLocalTimeCommands(messageText);
+        if (timeResult) {
+            appendMessage("JARVIS", timeResult.reply, timeResult.action);
+            if (timeResult.speak && voiceEnabled) {
+                speakText(timeResult.reply);
             } else {
                 setCoreState("IDLE");
             }
             return;
         }
 
-        // 2. Query Serverless Gemini API Route
         setCoreState("THINKING");
 
         try {
@@ -382,11 +519,20 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             const data = await response.json();
-            const replyText = data.reply || "No response received.";
+            let replyText = data.reply || "No response received.";
+            let action = data.action || null;
             const sources = data.grounding_sources || [];
 
-            // Render JARVIS response
-            appendMessage("JARVIS", replyText, sources);
+            // If an action was extracted, execute it
+            if (action && action.type) {
+                const actionResult = await executeClientAction(action);
+                if (actionResult && actionResult.status === "bridge_offline" && actionResult.fallbackReply) {
+                    replyText = actionResult.fallbackReply;
+                }
+            }
+
+            // Render JARVIS response with action feedback card
+            appendMessage("JARVIS", replyText, action, sources);
 
             // Trigger Voice Output
             if (data.speak !== false && voiceEnabled) {
@@ -397,7 +543,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         } catch (err) {
             console.error("Communication error:", err);
-            const errReply = "JARVIS is unable to communicate with the serverless API. Please ensure the application is running or deployed with valid environment configuration.";
+            const errReply = "JARVIS is unable to communicate with the AI core. Please verify your connection.";
             appendMessage("JARVIS", errReply);
             setCoreState("ERROR");
             showToast("Serverless API communication error");

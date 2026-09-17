@@ -93,7 +93,7 @@ body {
 .header-left {
     display: flex;
     align-items: center;
-    gap: 20px;
+    gap: 16px;
 }
 
 .system-tag {
@@ -137,7 +137,7 @@ body {
     border: 1px solid rgba(0, 255, 170, 0.4);
     padding: 4px 10px;
     border-radius: 4px;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 600;
     letter-spacing: 1.5px;
     color: var(--status-online);
@@ -145,6 +145,40 @@ body {
 }
 
 .status-indicator {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+/* Local Desktop Bridge Badge */
+.bridge-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-family: var(--font-display);
+    letter-spacing: 1px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.bridge-badge.bridge-online {
+    background: rgba(0, 242, 254, 0.12);
+    border: 1px solid var(--accent-cyan);
+    color: var(--accent-cyan);
+    box-shadow: 0 0 10px rgba(0, 242, 254, 0.25);
+}
+
+.bridge-badge.bridge-offline {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--text-muted);
+    color: var(--text-secondary);
+}
+
+.bridge-dot {
     width: 6px;
     height: 6px;
     border-radius: 50%;
@@ -434,7 +468,7 @@ body {
 
 .stat-val {
     font-family: var(--font-display);
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
     color: var(--text-primary);
     margin-top: 2px;
@@ -559,6 +593,74 @@ body {
     color: var(--text-primary);
     white-space: pre-wrap;
     word-break: break-word;
+}
+
+/* Action Feedback Card */
+.action-feedback-card {
+    margin-top: 12px;
+    padding: 10px 14px;
+    background: rgba(0, 242, 254, 0.06);
+    border: 1px solid rgba(0, 242, 254, 0.3);
+    border-left: 3px solid var(--accent-cyan);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    animation: fadeIn 0.3s ease;
+}
+
+.action-card-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.action-card-icon {
+    font-size: 20px;
+}
+
+.action-card-text {
+    display: flex;
+    flex-direction: column;
+}
+
+.action-card-label {
+    font-family: var(--font-display);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: var(--accent-cyan);
+}
+
+.action-card-target {
+    font-size: 12px;
+    color: var(--text-secondary);
+    max-width: 320px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.action-card-btn {
+    background: linear-gradient(135deg, rgba(0, 242, 254, 0.2), rgba(79, 172, 254, 0.3));
+    border: 1px solid var(--accent-cyan);
+    border-radius: 4px;
+    color: #ffffff;
+    font-family: var(--font-display);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    padding: 6px 12px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.action-card-btn:hover {
+    background: linear-gradient(135deg, rgba(0, 242, 254, 0.4), rgba(79, 172, 254, 0.5));
+    box-shadow: 0 0 12px var(--accent-glow);
 }
 
 /* Grounding Sources Badge */
@@ -728,7 +830,7 @@ body {
     border-radius: 4px;
     color: var(--text-primary);
     font-family: var(--font-body);
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
     padding: 6px 14px;
     cursor: pointer;
@@ -821,7 +923,6 @@ body {
     to { opacity: 1; transform: translateY(0); }
 }
 
-/* Responsive adjustments */
 @media (max-width: 950px) {
     .hud-main {
         grid-template-columns: 1fr;
