@@ -1,4 +1,4 @@
-﻿# JARVIS - Vercel-Ready AI Tactical Voice Assistant
+# JARVIS - Vercel-Ready AI Tactical Voice Assistant
 
 A futuristic, desktop-like JARVIS AI Assistant web application designed for direct **Vercel Serverless Deployment** and powered by the official **Google Gemini API** (`@google/genai` SDK) with native browser voice input and synthesis.
 

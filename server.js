@@ -1,4 +1,4 @@
-﻿/**
+/**
  * server.js - Local Development Runner for Vercel Serverless Architecture
  * 
  * Emulates Vercel Serverless Function routing and serves public static assets.

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * script.js - JARVIS Frontend Controller for Vercel Serverless Architecture
  * Handles Web Speech Recognition, Speech Synthesis, Safe Local Commands, and API interaction.
  */

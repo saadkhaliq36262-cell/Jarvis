@@ -1,4 +1,4 @@
-﻿/**
+/**
  * api/chat.js - Vercel Serverless API Route for JARVIS AI Assistant
  * 
  * Securely communicates with the official Google GenAI SDK (@google/genai).
