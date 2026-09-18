@@ -1,9 +1,11 @@
 /**
- * api/chat.js - Vercel Serverless API Route with Hybrid Intent Engine
+ * api/chat.js - Vercel Serverless API Route for JARVIS AI Assistant
  * 
- * Features:
- * 1. Fast-path intent recognition for deterministic actions (YouTube, Google Search, Lock PC, Apps).
- * 2. Deep reasoning via Google Gemini API for general queries, explanations, and creative requests.
+ * Strict User Consent & Explicit Action Architecture:
+ * 1. DIRECT DATA RETRIEVAL: Queries for live data (BTC price, weather, market news) 
+ *    are answered directly in the chat with structured data points (NO unprompted redirects).
+ * 2. EXPLICIT ACTION TRIGGER: Browser navigation (YouTube search, external links, PC lock) 
+ *    executes ONLY upon explicit user command with full external URLs.
  */
 
 import { GoogleGenAI } from "@google/genai";
@@ -11,36 +13,52 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-const JARVIS_SYSTEM_INSTRUCTION = `You are JARVIS, an advanced, highly intelligent, and courteous personal AI assistant.
-Your communication style:
-- Calm, professional, articulate, and poised.
-- Concise and direct without being blunt; avoid unnecessary filler or overly long paragraphs.
-- Slightly futuristic and respectful (using phrases like 'Certainly, sir', 'Right away', 'At your service' when appropriate).
+const JARVIS_SYSTEM_INSTRUCTION = `You are JARVIS, an advanced, highly intelligent AI Assistant operating under STRICT user-consent rules.
+
+COMMAND EXECUTION & PERMISSION RULES (STRICT):
+1. USER CONSENT MANDATE: Do NOT auto-trigger external links, redirect pages, or open third-party platforms (e.g., YouTube, Google, Trading Sites) autonomously unless explicitly instructed by the user in the prompt.
+2. EXPLICIT TRIGGER ONLY: Perform browser actions, search redirections, or app launches ONLY when the user explicitly commands it (e.g., "Jarvis YouTube open karo", "Open YouTube and search AI", "Search the web for X", "Open tradingview", "Lock my laptop").
+3. DIRECT DATA RETRIEVAL (API/SEARCH): When the user asks for specific live data (e.g., "Search the web and tell me current BTC USD", "What is the price of Bitcoin?"), fetch and display the detailed results inside the chat response. Always include key data points (e.g. Live Price, 24-hour Trend, Market Summary). DO NOT generate internal broken app routes or invalid relative Vercel URLs. Set action to null unless explicitly commanded to open a link.
+4. EXTERNAL AUTOMATION (DIRECT LAUNCH/NAVIGATION): When the user explicitly commands action-based navigation (e.g., "YouTube open karo aur AI automation ki video lagao", "Open TradingView"), formulate a valid direct external URL (e.g., https://www.youtube.com/results?search_query=ai+automation, https://www.tradingview.com) and return it in the action object. NEVER use relative local paths.
+5. MULTILINGUAL RECOGNITION: Understand commands in English, Roman Urdu / Urdu (e.g., "YouTube open karo", "BTC price batao", "Google pe search karo").
 
 You MUST respond in valid JSON format matching this schema:
 {
-  "reply": "Your spoken conversational response (polite and concise)",
+  "reply": "Clear, direct, structured summary including key data points and polite speech.",
   "speak": true,
-  "intent": "OPEN_URL" | "WEB_SEARCH" | "SYSTEM_LOCK" | "SYSTEM_APP" | "SYSTEM_VOLUME" | "CONVERSATION",
+  "intent": "OPEN_URL" | "WEB_SEARCH" | "SYSTEM_LOCK" | "SYSTEM_APP" | "SYSTEM_VOLUME" | "DIRECT_DATA" | "CONVERSATION",
   "action": {
     "type": "OPEN_URL" | "WEB_SEARCH" | "SYSTEM_LOCK" | "SYSTEM_APP" | "SYSTEM_VOLUME" | null,
-    "target": "URL or app name or query or null",
-    "label": "Short label for action button"
+    "target": "Full external URL (https://...) or app name or null",
+    "label": "Short button label"
   }
 }
 `;
 
 const DEFAULT_MODEL = "gemini-3.6-flash";
 
-// Fast deterministic intent matcher
-function matchLocalIntent(message) {
+// Fast deterministic matcher for explicit commands (English & Roman Urdu)
+function matchExplicitCommands(message) {
   const clean = (message || "").toLowerCase()
     .replace(/^(hey\s+|hi\s+|ok\s+)?jarvis[,\s:]*/i, "")
     .trim()
     .replace(/[.?!]+$/, "");
 
-  // 1. YouTube
-  if (/\b(open|launch|start|go to)\s+youtube\b/i.test(clean) || clean === "youtube") {
+  // 1. Explicit YouTube Search / Open (e.g. "YouTube open karo aur AI automation ki video lagao", "Open YouTube and search AI")
+  const ytSearchMatch = clean.match(/(?:(?:open|launch)\s+youtube\s+(?:and\s+search|for)\s+|youtube\s+open\s+karo\s+(?:aur\s+)?(?:search\s+karo\s+|video\s+lagao\s+)?)(.+)/i);
+  if (ytSearchMatch) {
+    const query = ytSearchMatch[1].replace(/ki\s+video\s+lagao|video\s+lagao/i, "").trim();
+    const targetUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
+    return {
+      reply: `Opening YouTube and searching for "${query}", sir.`,
+      speak: true,
+      intent: "OPEN_URL",
+      action: { type: "OPEN_URL", target: targetUrl, label: `YouTube: ${query}` }
+    };
+  }
+
+  // Explicit YouTube Homepage Open
+  if (/\b(?:open|launch|start|go to)\s+youtube\b/i.test(clean) || /\byoutube\s+open\s+karo\b/i.test(clean) || clean === "youtube") {
     return {
       reply: "Opening YouTube for you now, sir.",
       speak: true,
@@ -49,8 +67,30 @@ function matchLocalIntent(message) {
     };
   }
 
-  // 2. Google / Common Websites
-  if (/\b(open|launch|go to)\s+(google|github|linkedin|twitter|reddit|wikipedia)\b/i.test(clean)) {
+  // 2. Explicit TradingView / Trading Charts
+  if (/\b(?:open|launch|go to)\s+(?:tradingview|trading\s+chart|crypto\s+chart)\b/i.test(clean) || /\btradingview\s+open\s+karo\b/i.test(clean)) {
+    return {
+      reply: "Opening TradingView charts for you now, sir.",
+      speak: true,
+      intent: "OPEN_URL",
+      action: { type: "OPEN_URL", target: "https://www.tradingview.com", label: "Open TradingView" }
+    };
+  }
+
+  // 3. Explicit Web Search Navigation (e.g. "Search Google for X", "Google pe search karo X")
+  const explicitSearchMatch = clean.match(/^(?:search(?:\s+the\s+web|\s+google)?\s+for\s+|google\s+pe\s+search\s+karo\s+|google\s+search\s+)(.+)$/i);
+  if (explicitSearchMatch) {
+    const query = explicitSearchMatch[1].trim();
+    return {
+      reply: `Searching the web for "${query}", sir.`,
+      speak: true,
+      intent: "WEB_SEARCH",
+      action: { type: "WEB_SEARCH", target: `https://www.google.com/search?q=${encodeURIComponent(query)}`, label: `Search: ${query}` }
+    };
+  }
+
+  // 4. Common External Platforms
+  if (/\b(?:open|launch|go to)\s+(google|github|linkedin|twitter|reddit|wikipedia)\b/i.test(clean)) {
     const match = clean.match(/\b(google|github|linkedin|twitter|reddit|wikipedia)\b/i);
     const domain = match ? match[1].toLowerCase() : "google";
     const urls = {
@@ -69,20 +109,8 @@ function matchLocalIntent(message) {
     };
   }
 
-  // 3. Web Search
-  const searchMatch = clean.match(/^(?:search(?:\s+the\s+web|\s+google)?\s+for\s+|google\s+)(.+)$/i);
-  if (searchMatch) {
-    const query = searchMatch[1].trim();
-    return {
-      reply: `Searching the web for "${query}", sir.`,
-      speak: true,
-      intent: "WEB_SEARCH",
-      action: { type: "WEB_SEARCH", target: `https://www.google.com/search?q=${encodeURIComponent(query)}`, label: `Search: ${query}` }
-    };
-  }
-
-  // 4. Lock Laptop / PC
-  if (/\b(lock\s+my\s+(?:laptop|pc|computer|workstation)|lock\s+(?:screen|windows|system))\b/i.test(clean)) {
+  // 5. Workstation Lock
+  if (/\b(?:lock\s+my\s+(?:laptop|pc|computer|workstation)|lock\s+(?:screen|windows|system)|laptop\s+lock\s+karo|pc\s+lock\s+karo)\b/i.test(clean)) {
     return {
       reply: "Locking your workstation now, sir.",
       speak: true,
@@ -91,7 +119,7 @@ function matchLocalIntent(message) {
     };
   }
 
-  // 5. App Launch
+  // 6. Safe App Launch
   const appMatch = clean.match(/\b(?:open|launch|start)\s+(notepad|calculator|calc|task manager|explorer|cmd|terminal)\b/i);
   if (appMatch) {
     const app = appMatch[1].toLowerCase();
@@ -103,29 +131,13 @@ function matchLocalIntent(message) {
     };
   }
 
-  // 6. Volume Control
-  if (/\b(?:mute(?:\s+volume|\s+audio)?|volume\s+mute)\b/i.test(clean)) {
+  // 7. Volume Control
+  if (/\b(?:mute(?:\s+volume|\s+audio)?|volume\s+mute|volume\s+band\s+karo)\b/i.test(clean)) {
     return {
       reply: "Muting system audio, sir.",
       speak: true,
       intent: "SYSTEM_VOLUME",
       action: { type: "SYSTEM_VOLUME", target: "mute", label: "Mute Volume" }
-    };
-  }
-  if (/\bvolume\s+up\b/i.test(clean)) {
-    return {
-      reply: "Increasing system volume, sir.",
-      speak: true,
-      intent: "SYSTEM_VOLUME",
-      action: { type: "SYSTEM_VOLUME", target: "up", label: "Volume Up" }
-    };
-  }
-  if (/\bvolume\s+down\b/i.test(clean)) {
-    return {
-      reply: "Decreasing system volume, sir.",
-      speak: true,
-      intent: "SYSTEM_VOLUME",
-      action: { type: "SYSTEM_VOLUME", target: "down", label: "Volume Down" }
     };
   }
 
@@ -178,17 +190,17 @@ export default async function handler(req, res) {
     });
   }
 
-  // 1. Fast deterministic action matching
-  const localMatch = matchLocalIntent(message);
-  if (localMatch) {
+  // 1. Fast deterministic action check for explicit user commands
+  const explicitMatch = matchExplicitCommands(message);
+  if (explicitMatch) {
     return res.status(200).json({
-      ...localMatch,
+      ...explicitMatch,
       status: "ok",
       grounding_sources: []
     });
   }
 
-  // 2. Gemini AI query for general/complex reasoning
+  // 2. Query Google Gemini AI for direct data retrieval and reasoning
   const apiKey = (process.env.GEMINI_API_KEY || "").trim();
   if (!apiKey || apiKey === "your_gemini_api_key_here") {
     return res.status(200).json({
@@ -206,13 +218,28 @@ export default async function handler(req, res) {
       contents: message,
       config: {
         systemInstruction: JARVIS_SYSTEM_INSTRUCTION,
-        temperature: 0.5,
+        temperature: 0.4,
         responseMimeType: "application/json"
       }
     });
 
     const rawReply = response.text || "";
     const parsedData = parseGeminiJson(rawReply);
+
+    // Extract grounding citations if returned
+    const sources = [];
+    const candidate = response.candidates?.[0];
+    const groundingMetadata = candidate?.groundingMetadata;
+    if (groundingMetadata?.groundingChunks) {
+      for (const chunk of groundingMetadata.groundingChunks) {
+        if (chunk.web?.uri) {
+          sources.push({
+            title: chunk.web.title || "Web Source",
+            uri: chunk.web.uri
+          });
+        }
+      }
+    }
 
     if (parsedData && parsedData.reply) {
       return res.status(200).json({
@@ -221,7 +248,7 @@ export default async function handler(req, res) {
         intent: parsedData.intent || "CONVERSATION",
         action: parsedData.action || null,
         status: "ok",
-        grounding_sources: []
+        grounding_sources: sources
       });
     }
 
@@ -231,7 +258,7 @@ export default async function handler(req, res) {
       intent: "CONVERSATION",
       action: null,
       status: "ok",
-      grounding_sources: []
+      grounding_sources: sources
     });
 
   } catch (error) {
