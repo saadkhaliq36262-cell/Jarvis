@@ -428,7 +428,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 icon = "🌙";
             } else if (action.type === "SYSTEM_LOCK") {
                 icon = "🔒";
-            } else if (action.type === "SYSTEM_APP") {
+            } else if (action.type === "SYSTEM_APP" || action.type === "OPEN_APPLICATION") {
                 icon = "💻";
             } else if (action.type === "SYSTEM_VOLUME") {
                 icon = "🔊";
@@ -486,12 +486,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // --- 8. Local Agent Tool Execution Engine ---
     async function executeLocalTool(toolName, params = {}, confirmed = false) {
+        console.log("[JARVIS ACTION] TOOL CALLED", { toolName, params, confirmed });
         try {
-            const res = await fetch(`${LOCAL_AGENT_HTTP}/api/system/execute`, {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 4000);
+
+            const url = `${LOCAL_AGENT_HTTP}/api/system/execute?token=${encodeURIComponent(LOCAL_AGENT_TOKEN)}`;
+            const res = await fetch(url, {
                 method: "POST",
+                signal: controller.signal,
                 headers: {
                     "Content-Type": "application/json",
-                    "X-Agent-Token": LOCAL_AGENT_TOKEN
+                    "X-Agent-Token": LOCAL_AGENT_TOKEN,
+                    "Authorization": `Bearer ${LOCAL_AGENT_TOKEN}`
                 },
                 body: JSON.stringify({
                     tool: toolName,
@@ -499,16 +506,29 @@ document.addEventListener("DOMContentLoaded", () => {
                     confirmed: confirmed
                 })
             });
+            clearTimeout(timeoutId);
 
             if (!res.ok) {
                 const errText = await res.text();
-                return { status: "error", message: `Agent HTTP ${res.status}: ${errText}` };
+                const errResult = { status: "error", message: `Agent HTTP ${res.status}: ${errText}` };
+                console.log("[JARVIS ACTION] TOOL RESPONSE", errResult);
+                return errResult;
             }
 
-            return await res.json();
+            const data = await res.json();
+            // Automatically mark bridge online if HTTP call succeeds
+            if (!isBridgeOnline) {
+                isBridgeOnline = true;
+                if (bridgeBadge) {
+                    bridgeBadge.className = "bridge-badge bridge-online";
+                    if (bridgeText) bridgeText.textContent = "WINDOWS AGENT: ACTIVE";
+                }
+            }
+            console.log("[JARVIS ACTION] TOOL RESPONSE", data);
+            return data;
         } catch (e) {
-            console.error("Local tool execution error:", e);
-            return { status: "offline", message: "Windows Local Agent is not running on port 5000." };
+            console.warn("[JARVIS ACTION] Local tool execution fetch error:", e);
+            return { status: "offline", message: "Windows Local Agent is not running on port 5000 or unreachable." };
         }
     }
 
@@ -598,8 +618,11 @@ document.addEventListener("DOMContentLoaded", () => {
         logsContentBody.innerHTML = `<div class="log-entry" style="color: var(--accent-cyan)">Fetching latest audit logs...</div>`;
 
         try {
-            const res = await fetch(`${LOCAL_AGENT_HTTP}/api/system/logs?limit=50`, {
-                headers: { "X-Agent-Token": LOCAL_AGENT_TOKEN }
+            const res = await fetch(`${LOCAL_AGENT_HTTP}/api/system/logs?limit=50&token=${encodeURIComponent(LOCAL_AGENT_TOKEN)}`, {
+                headers: { 
+                    "X-Agent-Token": LOCAL_AGENT_TOKEN,
+                    "Authorization": `Bearer ${LOCAL_AGENT_TOKEN}`
+                }
             });
             if (res.ok) {
                 const data = await res.json();
@@ -634,35 +657,40 @@ document.addEventListener("DOMContentLoaded", () => {
     async function executeCentralAction(action) {
         if (!action || !action.type) return null;
 
+        console.log("[JARVIS ACTION] RECEIVED", action);
+        console.log("[JARVIS ACTION] TYPE", action.type);
+        console.log("[JARVIS ACTION] TARGET", action.target);
+        console.log("[JARVIS ACTION] DISPATCHING", { type: action.type, target: action.target });
+
         // 1. Browser Actions (Web Mode with Local Bridge Popup Bypass)
         if (action.type === "OPEN_URL") {
             let executedLocally = false;
 
-            // If Local Agent is active, open URL via Windows system default browser to bypass popup blockers
-            if (isBridgeOnline) {
-                try {
-                    const localRes = await executeLocalTool("open_browser_url", { url: action.target }, false);
-                    if (localRes.status === "executed" || localRes.status === "dry_run") {
-                        executedLocally = true;
-                        action.status = "executed";
-                        showToast(`Opened ${action.label || action.target} on default browser`);
-                    }
-                } catch (e) {
-                    console.warn("Local browser launch failed, falling back to window.open:", e);
+            // Direct attempt to open via Local Agent Windows default browser
+            try {
+                const localRes = await executeLocalTool("open_browser_url", { url: action.target }, false);
+                if (localRes.status === "executed" || localRes.status === "dry_run" || (localRes.data && localRes.data.success)) {
+                    executedLocally = true;
+                    action.status = "executed";
+                    showToast(`Opened ${action.label || action.target} in default browser`);
                 }
+            } catch (e) {
+                console.warn("[JARVIS ACTION] Local browser open attempt:", e);
             }
 
             // Fallback to client-side window.open
             if (!executedLocally) {
                 try {
-                    window.open(action.target, "_blank", "noopener,noreferrer");
+                    const win = window.open(action.target, "_blank");
+                    if (win) win.focus();
                     action.status = "executed";
                     showToast(`Opened ${action.label || action.target}`);
                 } catch (e) {
-                    console.warn("Popup blocked or direct window.open restricted:", e);
+                    console.warn("[JARVIS ACTION] Popup blocked or window.open restricted:", e);
                 }
             }
 
+            console.log("[JARVIS ACTION] EXECUTION FINISHED", { type: action.type, executedLocally, status: action.status });
             return { status: "executed", message: `Opened ${action.label || action.target}` };
         }
 
@@ -689,34 +717,39 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         if (toolName) {
-            if (!isBridgeOnline) {
-                return {
-                    status: "bridge_offline",
-                    fallbackReply: "Local Windows Agent is offline. Start the agent using start-agent.bat or python local-agent/main.py on your PC to enable system controls."
-                };
-            }
-
             const execRes = await executeLocalTool(toolName, toolParams, false);
 
             if (execRes.status === "confirmation_required") {
                 action.status = "pending";
                 requestUserConfirmation(toolName, toolParams, execRes.message);
+                console.log("[JARVIS ACTION] EXECUTION FINISHED", { status: "confirmation_pending" });
                 return { status: "confirmation_pending" };
             }
 
             if (execRes.status === "dry_run") {
                 action.status = "executed";
-                showToast(`[DRY_RUN] ${execRes.message}`);
+                showToast(`[DRY_RUN] ${execRes.message || "Executed"}`);
+                console.log("[JARVIS ACTION] EXECUTION FINISHED", { status: "dry_run" });
                 return { status: "executed", message: execRes.message };
             }
 
-            if (execRes.status === "executed") {
+            if (execRes.status === "executed" || execRes.success === true) {
                 action.status = "executed";
                 showToast(`Executed ${toolName}`);
-                return { status: "executed", data: execRes.data };
+                console.log("[JARVIS ACTION] EXECUTION FINISHED", { status: "executed", data: execRes.data || execRes });
+                return { status: "executed", data: execRes.data || execRes };
             }
 
-            return { status: "error", fallbackReply: execRes.message || "Execution error" };
+            if (execRes.status === "offline") {
+                console.log("[JARVIS ACTION] EXECUTION FINISHED (OFFLINE)");
+                return {
+                    status: "bridge_offline",
+                    fallbackReply: "Local Windows Agent is offline on port 5000. Start the agent using start-agent.bat on your PC to enable system controls."
+                };
+            }
+
+            console.log("[JARVIS ACTION] EXECUTION FINISHED (ERROR)", execRes);
+            return { status: "error", fallbackReply: execRes.message || execRes.error || "Execution error" };
         }
 
         return null;
@@ -832,9 +865,10 @@ document.addEventListener("DOMContentLoaded", () => {
             let action = data.action || null;
             const sources = data.grounding_sources || [];
 
-            // If an action was extracted, execute it
+            // If an action was extracted, automatically execute it via the Central Action Dispatcher
             if (action && action.type) {
-                const actionResult = await executeClientAction(action);
+                console.log("[JARVIS ACTION] Triggering executeCentralAction from user submission...", action);
+                const actionResult = await executeCentralAction(action);
                 if (actionResult && actionResult.status === "bridge_offline" && actionResult.fallbackReply) {
                     replyText = actionResult.fallbackReply;
                 }

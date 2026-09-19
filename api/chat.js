@@ -94,11 +94,13 @@ function matchExplicitCommands(message) {
   }
 
   // 5. Safe Desktop App Launch (Explicit)
-  const appMatch = clean.match(/\b(?:open|launch|start)\s+(notepad|calculator|calc|task manager|taskmgr|explorer|cmd|terminal)\b/i);
+  const appMatch = clean.match(/\b(?:open|launch|start)\s+(notepad|calculator|calc|paint|mspaint|task manager|taskmgr|file explorer|explorer|cmd|terminal|chrome|edge|vscode)\b/i);
   if (appMatch) {
     let app = appMatch[1].toLowerCase();
     if (app === "calc") app = "calculator";
+    if (app === "mspaint") app = "paint";
     if (app === "taskmgr") app = "task manager";
+    if (app === "file explorer") app = "explorer";
     const displayName = app.charAt(0).toUpperCase() + app.slice(1);
     return {
       reply: `Launching ${displayName} on your Windows PC, sir.`,
