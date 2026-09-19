@@ -22,4 +22,7 @@ Thumbs.db
 
 __pycache__/
 *.py[cod]
+local-agent/logs/
+*.log
+logs/
 

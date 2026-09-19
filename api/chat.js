@@ -132,7 +132,17 @@ function matchModeBExplicitCommands(message) {
     };
   }
 
-  // 6. Volume Control (Explicit)
+  // 6. Screenshot Capture (Explicit)
+  if (/\b(?:take\s+(?:a\s+)?screenshot|capture\s+screen|screenshot\s+lo)\b/i.test(clean)) {
+    return {
+      reply: "Capturing a screenshot of your primary display now, sir.",
+      speak: true,
+      intent: "MODE_B_ACTION",
+      action: { type: "SYSTEM_SCREENSHOT", target: "screen", label: "Take Screenshot" }
+    };
+  }
+
+  // 7. Volume Control (Explicit)
   if (/\b(?:mute(?:\s+volume|\s+audio)?|volume\s+mute|volume\s+band\s+karo)\b/i.test(clean)) {
     return {
       reply: "Muting system audio, sir.",
