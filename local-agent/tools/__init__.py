@@ -4,7 +4,14 @@ local-agent/tools/__init__.py - Master Tool Registry
 
 from typing import Dict, List, Any
 from .base import BaseTool
-from .windows import GetSystemTelemetryTool, AdjustVolumeTool, LockWorkstationTool
+from .windows import (
+    GetSystemTelemetryTool,
+    AdjustVolumeTool,
+    LockWorkstationTool,
+    ShutdownSystemTool,
+    RestartSystemTool,
+    SleepSystemTool
+)
 from .processes import ListProcessesTool, LaunchApplicationTool, TerminateProcessTool
 from .files import ListFilesTool, ReadFileTool, WriteFileTool, DeleteFileTool
 from .screenshots import TakeScreenshotTool
@@ -17,6 +24,9 @@ ALL_TOOLS: List[BaseTool] = [
     GetSystemTelemetryTool(),
     AdjustVolumeTool(),
     LockWorkstationTool(),
+    ShutdownSystemTool(),
+    RestartSystemTool(),
+    SleepSystemTool(),
     # Processes & Applications
     ListProcessesTool(),
     LaunchApplicationTool(),

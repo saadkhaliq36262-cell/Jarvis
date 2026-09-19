@@ -25,6 +25,7 @@ TOOL_PERMISSIONS: Dict[str, PermissionLevel] = {
     "terminate_process": PermissionLevel.CONFIRMATION_REQUIRED,
     
     # OS Actions (Confirmation required)
+    "shutdown_system": PermissionLevel.CONFIRMATION_REQUIRED,
     "lock_workstation": PermissionLevel.CONFIRMATION_REQUIRED,
     "sleep_system": PermissionLevel.CONFIRMATION_REQUIRED,
     "restart_system": PermissionLevel.CONFIRMATION_REQUIRED,

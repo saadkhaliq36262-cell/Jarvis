@@ -5,6 +5,7 @@ local-agent/tools/windows.py - Windows OS Management & Hardware Telemetry
 import sys
 import ctypes
 import platform
+import subprocess
 import psutil
 from typing import Dict, Any
 from .base import BaseTool
@@ -113,3 +114,76 @@ class LockWorkstationTool(BaseTool):
             ctypes.windll.user32.LockWorkStation()
             return {"success": True, "message": "Workstation locked successfully."}
         return {"success": False, "message": "Lock is supported on Windows."}
+
+class ShutdownSystemTool(BaseTool):
+    name = "shutdown_system"
+    description = "Initiates a Windows system shutdown (requires user confirmation)."
+    parameters_schema = {
+        "type": "object",
+        "properties": {
+            "delay_seconds": {"type": "integer", "description": "Delay before shutdown in seconds", "default": 10}
+        }
+    }
+
+    async def execute(self, params: Dict[str, Any], dry_run: bool = False) -> Dict[str, Any]:
+        delay = params.get("delay_seconds", 10)
+        if dry_run:
+            return {"dry_run": True, "message": f"[DRY RUN] Would execute Windows shutdown (delay: {delay}s)."}
+
+        if sys.platform == "win32":
+            try:
+                subprocess.Popen(["shutdown", "/s", "/t", str(delay), "/c", "Shutdown initiated by JARVIS AI Assistant"])
+                return {
+                    "success": True,
+                    "message": f"System shutdown initiated with {delay} seconds delay. (Run 'shutdown /a' to abort if needed)."
+                }
+            except Exception as e:
+                return {"success": False, "message": f"Shutdown execution failed: {str(e)}"}
+        return {"success": False, "message": "Shutdown command is supported on Windows."}
+
+class RestartSystemTool(BaseTool):
+    name = "restart_system"
+    description = "Initiates a Windows system restart (requires user confirmation)."
+    parameters_schema = {
+        "type": "object",
+        "properties": {
+            "delay_seconds": {"type": "integer", "description": "Delay before restart in seconds", "default": 10}
+        }
+    }
+
+    async def execute(self, params: Dict[str, Any], dry_run: bool = False) -> Dict[str, Any]:
+        delay = params.get("delay_seconds", 10)
+        if dry_run:
+            return {"dry_run": True, "message": f"[DRY RUN] Would execute Windows restart (delay: {delay}s)."}
+
+        if sys.platform == "win32":
+            try:
+                subprocess.Popen(["shutdown", "/r", "/t", str(delay), "/c", "Restart initiated by JARVIS AI Assistant"])
+                return {
+                    "success": True,
+                    "message": f"System restart initiated with {delay} seconds delay. (Run 'shutdown /a' to abort if needed)."
+                }
+            except Exception as e:
+                return {"success": False, "message": f"Restart execution failed: {str(e)}"}
+        return {"success": False, "message": "Restart command is supported on Windows."}
+
+class SleepSystemTool(BaseTool):
+    name = "sleep_system"
+    description = "Puts the Windows system into sleep/standby mode (requires user confirmation)."
+    parameters_schema = {
+        "type": "object",
+        "properties": {}
+    }
+
+    async def execute(self, params: Dict[str, Any], dry_run: bool = False) -> Dict[str, Any]:
+        if dry_run:
+            return {"dry_run": True, "message": "[DRY RUN] Would put Windows PC to sleep."}
+
+        if sys.platform == "win32":
+            try:
+                # Rundll32 power state suspend
+                subprocess.Popen(["rundll32.exe", "powrprof.dll,SetSuspendState", "0,1,0"])
+                return {"success": True, "message": "System put to sleep successfully."}
+            except Exception as e:
+                return {"success": False, "message": f"Sleep execution failed: {str(e)}"}
+        return {"success": False, "message": "Sleep command is supported on Windows."}

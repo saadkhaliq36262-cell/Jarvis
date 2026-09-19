@@ -420,6 +420,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 icon = action.type === "OPEN_URL" ? "🌐" : "🔍";
                 isLink = true;
                 targetUrl = action.target;
+            } else if (action.type === "SYSTEM_SHUTDOWN") {
+                icon = "🛑";
+            } else if (action.type === "SYSTEM_RESTART") {
+                icon = "🔄";
+            } else if (action.type === "SYSTEM_SLEEP") {
+                icon = "🌙";
             } else if (action.type === "SYSTEM_LOCK") {
                 icon = "🔒";
             } else if (action.type === "SYSTEM_APP") {
@@ -642,7 +648,13 @@ document.addEventListener("DOMContentLoaded", () => {
         let toolName = null;
         let toolParams = {};
 
-        if (action.type === "SYSTEM_LOCK") {
+        if (action.type === "SYSTEM_SHUTDOWN") {
+            toolName = "shutdown_system";
+        } else if (action.type === "SYSTEM_RESTART") {
+            toolName = "restart_system";
+        } else if (action.type === "SYSTEM_SLEEP") {
+            toolName = "sleep_system";
+        } else if (action.type === "SYSTEM_LOCK") {
             toolName = "lock_workstation";
         } else if (action.type === "SYSTEM_APP") {
             toolName = "launch_application";
@@ -651,7 +663,7 @@ document.addEventListener("DOMContentLoaded", () => {
             toolName = "adjust_volume";
             toolParams = { action: action.target };
         } else if (action.type === "SYSTEM_SCREENSHOT") {
-            toolName = "capture_screenshot";
+            toolName = "take_screenshot";
         }
 
         if (toolName) {
@@ -722,6 +734,45 @@ document.addEventListener("DOMContentLoaded", () => {
 
         appendMessage("USER", messageText);
         userInput.value = "";
+
+        // Conversational confirmation check if an action is pending authorization
+        if (pendingConfirmationAction) {
+            const cleanText = messageText.toLowerCase().trim().replace(/[.?!]+$/, "");
+            const isAffirmative = /^(yes|y|confirm|proceed|authorize|authorized|sure|ok|okay|ha|haan|kardo|do it)$/i.test(cleanText);
+            const isNegative = /^(no|n|cancel|cancelled|stop|dont|don't|nahi|abort)$/i.test(cleanText);
+
+            if (isAffirmative) {
+                if (confirmationModal) confirmationModal.classList.add("hidden");
+                const { toolName, params } = pendingConfirmationAction;
+                pendingConfirmationAction = null;
+
+                showToast(`Authorizing & executing ${toolName}...`);
+                const execResult = await executeLocalTool(toolName, params, true);
+
+                let replyMsg = `Action ${toolName} authorized and executed on Windows PC.`;
+                if (execResult.status === "dry_run") {
+                    replyMsg = `[DRY_RUN] ${toolName} simulated successfully.`;
+                } else if (execResult.status !== "executed") {
+                    replyMsg = `Execution failed: ${execResult.message || execResult.error || "Unknown error"}`;
+                }
+
+                appendMessage("JARVIS", replyMsg);
+                if (voiceEnabled) speakText(replyMsg);
+                else setCoreState("IDLE");
+                return;
+            }
+
+            if (isNegative) {
+                if (confirmationModal) confirmationModal.classList.add("hidden");
+                pendingConfirmationAction = null;
+                const cancelMsg = "Action cancelled by user.";
+                appendMessage("JARVIS", cancelMsg);
+                showToast(cancelMsg);
+                if (voiceEnabled) speakText(cancelMsg);
+                else setCoreState("IDLE");
+                return;
+            }
+        }
 
         // Fast local check for time/date
         const timeResult = checkLocalTimeCommands(messageText);

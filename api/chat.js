@@ -14,35 +14,31 @@ dotenv.config();
 const JARVIS_SYSTEM_INSTRUCTION = `SYSTEM INSTRUCTIONS FOR JARVIS AI CORE (STABLE MASTER PROMPT)
 
 1. IDENTITY & OPERATIONAL FRAMEWORK:
-- You are JARVIS, an advanced operational AI core integrated into the Antigravity system.
-- Your objective is to assist the user with high accuracy, speed, and absolute adherence to explicit execution boundaries.
+- You are JARVIS, an advanced operational AI assistant with local Windows automation capabilities.
+- Your objective is to assist the user with high accuracy, speed, and absolute adherence to execution boundaries.
 
-2. INTENT ROUTING ENGINE (CRITICAL EXECUTION LOGIC):
-For every incoming user command, classify the user intent into one of two exclusive operational modes:
+2. INTENT CLASSIFICATION TAXONOMY:
+Classify every incoming user query into one of the following structured categories:
 
-MODE A: DIRECT DATA & SEARCH RETRIEVAL (Trading, BTC, News, General Search, Tech Questions)
-- TRIGGER: The user requests information, news summaries, price updates, financial market analysis, or coding/technical help (e.g., "tell me BTC price", "search latest Bitcoin news", "summarize crypto trends", "what is JavaScript").
-- EXECUTION: Perform the search/fetching query internally and output the response DIRECTLY inside the chat interface as structured Markdown text with clear bullet points.
-- MANDATORY RESTRICTION: DO NOT invoke browser window navigation, relative URL redirects, or trigger external app launches during Mode A. Never output local 404 paths or invalid Vercel routes. Set action to null.
+- NORMAL_CHAT: Direct questions, code explanations, greetings, reasoning (e.g. "what is JavaScript?", "who are you?").
+  -> Output direct structured markdown in chat, set action to null.
+- WEB_SEARCH: Queries asking to search for information, news, crypto prices, market analysis (e.g. "search latest AI news", "tell me BTC price").
+  -> Output structured markdown summary in chat, set action to null.
+- OPEN_URL: Explicit commands to open external websites (e.g. "open YouTube", "open Google", "go to TradingView").
+  -> Set action type to OPEN_URL with full https:// URL.
+- OPEN_APPLICATION: Explicit commands to launch local desktop apps (e.g. "open Notepad", "open Calculator", "open Task Manager").
+  -> Set action type to SYSTEM_APP with app name (e.g. "notepad", "calculator").
+- SYSTEM_CONTROL: Explicit commands to manage Windows power, screen, or hardware (e.g. "turn off my laptop", "restart my laptop", "lock my laptop", "take a screenshot", "mute volume").
+  -> Set action type to SYSTEM_SHUTDOWN | SYSTEM_RESTART | SYSTEM_SLEEP | SYSTEM_LOCK | SYSTEM_SCREENSHOT | SYSTEM_VOLUME.
 
-MODE B: EXPLICIT BROWSER AUTOMATION & LAUNCH (YouTube, TradingView, External Sites, PC Control)
-- TRIGGER: The user explicitly commands opening, launching, or navigating to an external platform or app (e.g., "Jarvis open YouTube", "open YouTube and play AI automation video", "open TradingView", "lock my laptop").
-- EXECUTION: Output the required client-side UI action payload with a valid complete external URL (e.g., https://www.youtube.com, https://www.youtube.com/results?search_query=ai+automation, https://www.tradingview.com).
-- MANDATORY RESTRICTION: Execute the launch action immediately without generic fallback messages.
-
-3. STRICT USER CONSENT & PERMISSION GUARDRAILS:
-- AUTONOMY BAN: Strictly forbidden from launching external links, redirecting tabs, or opening apps autonomously without an explicit user command in the active turn.
-- COMPLIANCE: "Jarvis search X" -> Mode A (in-chat text). "Jarvis open X" -> Mode B (action launch).
-
-4. RESPONSE FORMAT:
-You MUST respond in valid JSON format:
+3. RESPONSE FORMAT (MANDATORY JSON):
 {
-  "reply": "Clear, direct, structured summary in professional JARVIS style",
+  "reply": "Professional structured JARVIS message",
   "speak": true,
-  "intent": "MODE_A_DATA" | "MODE_B_ACTION",
+  "intent": "NORMAL_CHAT" | "WEB_SEARCH" | "OPEN_URL" | "OPEN_APPLICATION" | "SYSTEM_CONTROL",
   "action": {
-    "type": "OPEN_URL" | "SYSTEM_LOCK" | "SYSTEM_APP" | "SYSTEM_VOLUME" | null,
-    "target": "Full external URL (https://...) or app name or null",
+    "type": "OPEN_URL" | "SYSTEM_APP" | "SYSTEM_LOCK" | "SYSTEM_SHUTDOWN" | "SYSTEM_RESTART" | "SYSTEM_SLEEP" | "SYSTEM_SCREENSHOT" | "SYSTEM_VOLUME" | null,
+    "target": "Full external URL (https://...) or tool target or null",
     "label": "Short button label"
   }
 }
@@ -50,14 +46,89 @@ You MUST respond in valid JSON format:
 
 const DEFAULT_MODEL = "gemini-3.6-flash";
 
-// Fast deterministic matcher for Mode B explicit user commands (English & Roman Urdu)
-function matchModeBExplicitCommands(message) {
+// Fast deterministic matcher for explicit commands (English & Roman Urdu)
+function matchExplicitCommands(message) {
   const clean = (message || "").toLowerCase()
     .replace(/^(hey\s+|hi\s+|ok\s+)?jarvis[,\s:]*/i, "")
     .trim()
     .replace(/[.?!]+$/, "");
 
-  // 1. YouTube Search / Video Launch (Explicit)
+  // 1. System Shutdown / Turn Off PC (Explicit)
+  if (/\b(?:turn\s+off\s+(?:my\s+)?(?:laptop|pc|computer|system)|shutdown\s+(?:my\s+)?(?:laptop|pc|computer|system)|power\s+off\s+(?:my\s+)?(?:laptop|pc|computer)|laptop\s+band\s+karo|pc\s+band\s+karo|laptop\s+shutdown\s+karo|pc\s+shutdown\s+karo)\b/i.test(clean)) {
+    return {
+      reply: "Your laptop will shut down. A security confirmation is required to proceed, sir.",
+      speak: true,
+      intent: "SYSTEM_CONTROL",
+      action: { type: "SYSTEM_SHUTDOWN", target: "shutdown", label: "Shutdown PC" }
+    };
+  }
+
+  // 2. System Restart / Reboot (Explicit)
+  if (/\b(?:restart\s+(?:my\s+)?(?:laptop|pc|computer|system)|reboot\s+(?:my\s+)?(?:laptop|pc|computer|system)|laptop\s+restart\s+karo|pc\s+restart\s+karo)\b/i.test(clean)) {
+    return {
+      reply: "Your laptop will restart. A security confirmation is required to proceed, sir.",
+      speak: true,
+      intent: "SYSTEM_CONTROL",
+      action: { type: "SYSTEM_RESTART", target: "restart", label: "Restart PC" }
+    };
+  }
+
+  // 3. System Sleep / Standby (Explicit)
+  if (/\b(?:sleep\s+(?:my\s+)?(?:laptop|pc|computer|system)|put\s+(?:my\s+)?(?:laptop|pc|computer)\s+to\s+sleep|laptop\s+sleep\s+karo)\b/i.test(clean)) {
+    return {
+      reply: "Putting your laptop to sleep now, sir.",
+      speak: true,
+      intent: "SYSTEM_CONTROL",
+      action: { type: "SYSTEM_SLEEP", target: "sleep", label: "Sleep PC" }
+    };
+  }
+
+  // 4. Workstation Lock (Explicit)
+  if (/\b(?:lock\s+my\s+(?:laptop|pc|computer|workstation)|lock\s+(?:screen|windows|system|workstation)|laptop\s+lock\s+karo|pc\s+lock\s+karo)\b/i.test(clean)) {
+    return {
+      reply: "Locking your workstation screen now, sir.",
+      speak: true,
+      intent: "SYSTEM_CONTROL",
+      action: { type: "SYSTEM_LOCK", target: "lock", label: "Lock Workstation" }
+    };
+  }
+
+  // 5. Safe Desktop App Launch (Explicit)
+  const appMatch = clean.match(/\b(?:open|launch|start)\s+(notepad|calculator|calc|task manager|taskmgr|explorer|cmd|terminal)\b/i);
+  if (appMatch) {
+    let app = appMatch[1].toLowerCase();
+    if (app === "calc") app = "calculator";
+    if (app === "taskmgr") app = "task manager";
+    const displayName = app.charAt(0).toUpperCase() + app.slice(1);
+    return {
+      reply: `Launching ${displayName} on your Windows PC, sir.`,
+      speak: true,
+      intent: "OPEN_APPLICATION",
+      action: { type: "SYSTEM_APP", target: app, label: `Launch ${displayName}` }
+    };
+  }
+
+  // 6. Screenshot Capture (Explicit)
+  if (/\b(?:take\s+(?:a\s+)?screenshot|capture\s+(?:my\s+)?screen|screenshot\s+lo)\b/i.test(clean)) {
+    return {
+      reply: "Capturing a screenshot of your primary display now, sir.",
+      speak: true,
+      intent: "SYSTEM_CONTROL",
+      action: { type: "SYSTEM_SCREENSHOT", target: "screen", label: "Take Screenshot" }
+    };
+  }
+
+  // 7. Volume Control (Explicit)
+  if (/\b(?:mute(?:\s+volume|\s+audio)?|volume\s+mute|volume\s+band\s+karo)\b/i.test(clean)) {
+    return {
+      reply: "Muting system audio, sir.",
+      speak: true,
+      intent: "SYSTEM_CONTROL",
+      action: { type: "SYSTEM_VOLUME", target: "mute", label: "Mute Volume" }
+    };
+  }
+
+  // 8. YouTube Search / Video Launch (Explicit)
   const ytSearchMatch = clean.match(/(?:(?:open|launch)\s+youtube\s+(?:and\s+search|and\s+play|for)\s+|youtube\s+open\s+karo\s+(?:aur\s+)?(?:search\s+karo\s+|video\s+lagao\s+|play\s+karo\s+)?)(.+)/i);
   if (ytSearchMatch) {
     const query = ytSearchMatch[1].replace(/ki\s+video\s+lagao|video\s+lagao|play\s+karo/i, "").trim();
@@ -65,7 +136,7 @@ function matchModeBExplicitCommands(message) {
     return {
       reply: `Opening YouTube and searching for "${query}", sir.`,
       speak: true,
-      intent: "MODE_B_ACTION",
+      intent: "OPEN_URL",
       action: { type: "OPEN_URL", target: targetUrl, label: `YouTube: ${query}` }
     };
   }
@@ -75,22 +146,22 @@ function matchModeBExplicitCommands(message) {
     return {
       reply: "Opening YouTube for you now, sir.",
       speak: true,
-      intent: "MODE_B_ACTION",
+      intent: "OPEN_URL",
       action: { type: "OPEN_URL", target: "https://www.youtube.com", label: "Open YouTube" }
     };
   }
 
-  // 2. TradingView / Trading Charts (Explicit)
+  // 9. TradingView / Trading Charts (Explicit)
   if (/\b(?:open|launch|go to)\s+(?:tradingview|trading\s+chart|crypto\s+chart)\b/i.test(clean) || /\btradingview\s+open\s+karo\b/i.test(clean)) {
     return {
       reply: "Opening TradingView charts for you now, sir.",
       speak: true,
-      intent: "MODE_B_ACTION",
+      intent: "OPEN_URL",
       action: { type: "OPEN_URL", target: "https://www.tradingview.com", label: "Open TradingView" }
     };
   }
 
-  // 3. Common External Platforms (Explicit Open)
+  // 10. Common External Platforms (Explicit Open)
   if (/\b(?:open|launch|go to)\s+(google|github|linkedin|twitter|reddit|wikipedia)\b/i.test(clean)) {
     const match = clean.match(/\b(google|github|linkedin|twitter|reddit|wikipedia)\b/i);
     const domain = match ? match[1].toLowerCase() : "google";
@@ -105,50 +176,8 @@ function matchModeBExplicitCommands(message) {
     return {
       reply: `Opening ${domain.charAt(0).toUpperCase() + domain.slice(1)} for you, sir.`,
       speak: true,
-      intent: "MODE_B_ACTION",
+      intent: "OPEN_URL",
       action: { type: "OPEN_URL", target: urls[domain] || "https://www.google.com", label: `Open ${domain}` }
-    };
-  }
-
-  // 4. Workstation Lock (Explicit)
-  if (/\b(?:lock\s+my\s+(?:laptop|pc|computer|workstation)|lock\s+(?:screen|windows|system)|laptop\s+lock\s+karo|pc\s+lock\s+karo)\b/i.test(clean)) {
-    return {
-      reply: "Locking your workstation now, sir.",
-      speak: true,
-      intent: "MODE_B_ACTION",
-      action: { type: "SYSTEM_LOCK", target: "lock", label: "Lock Workstation" }
-    };
-  }
-
-  // 5. Safe Desktop App Launch (Explicit)
-  const appMatch = clean.match(/\b(?:open|launch|start)\s+(notepad|calculator|calc|task manager|explorer|cmd|terminal)\b/i);
-  if (appMatch) {
-    const app = appMatch[1].toLowerCase();
-    return {
-      reply: `Launching ${app} for you now, sir.`,
-      speak: true,
-      intent: "MODE_B_ACTION",
-      action: { type: "SYSTEM_APP", target: app, label: `Launch ${app}` }
-    };
-  }
-
-  // 6. Screenshot Capture (Explicit)
-  if (/\b(?:take\s+(?:a\s+)?screenshot|capture\s+screen|screenshot\s+lo)\b/i.test(clean)) {
-    return {
-      reply: "Capturing a screenshot of your primary display now, sir.",
-      speak: true,
-      intent: "MODE_B_ACTION",
-      action: { type: "SYSTEM_SCREENSHOT", target: "screen", label: "Take Screenshot" }
-    };
-  }
-
-  // 7. Volume Control (Explicit)
-  if (/\b(?:mute(?:\s+volume|\s+audio)?|volume\s+mute|volume\s+band\s+karo)\b/i.test(clean)) {
-    return {
-      reply: "Muting system audio, sir.",
-      speak: true,
-      intent: "MODE_B_ACTION",
-      action: { type: "SYSTEM_VOLUME", target: "mute", label: "Mute Volume" }
     };
   }
 
@@ -270,11 +299,11 @@ export default async function handler(req, res) {
     });
   }
 
-  // 1. Check for Mode B Explicit Browser & System Automation Commands
-  const modeBMatch = matchModeBExplicitCommands(message);
-  if (modeBMatch) {
+  // 1. Check for Explicit System, App, and Browser Automation Commands
+  const explicitMatch = matchExplicitCommands(message);
+  if (explicitMatch) {
     return res.status(200).json({
-      ...modeBMatch,
+      ...explicitMatch,
       status: "ok",
       grounding_sources: []
     });
