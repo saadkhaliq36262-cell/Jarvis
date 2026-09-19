@@ -1,4 +1,4 @@
-﻿"""
+"""
 local-agent/tools/windows.py - Windows OS Management & Hardware Telemetry
 """
 

@@ -1,4 +1,4 @@
-﻿"""
+"""
 local-agent/permissions.py - Permission Classification & Policy Guardrails
 """
 

@@ -1,4 +1,4 @@
-﻿"""
+"""
 local-agent/tools/processes.py - Windows Process Listing & Application Launching
 """
 

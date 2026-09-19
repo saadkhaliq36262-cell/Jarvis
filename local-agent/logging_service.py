@@ -1,4 +1,4 @@
-﻿"""
+"""
 local-agent/logging_service.py - Sanitized Audit Logging Service
 """
 

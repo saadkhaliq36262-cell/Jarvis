@@ -1,4 +1,4 @@
-﻿"""
+"""
 local-agent/tools/base.py - Base Tool Interface & Definition
 """
 

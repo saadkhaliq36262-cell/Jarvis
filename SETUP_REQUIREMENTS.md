@@ -1,4 +1,4 @@
-﻿# JARVIS Multimodal Assistant - Setup Requirements & Environment Questionnaire
+# JARVIS Multimodal Assistant - Setup Requirements & Environment Questionnaire
 
 **Target Environment:** Windows 10/11 Host, Local Python 3.11 Agent, Android Debug Bridge (ADB), Multi-Device Network
 

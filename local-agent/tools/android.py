@@ -1,4 +1,4 @@
-﻿"""
+"""
 local-agent/tools/android.py - Modular Android ADB Controller (Stubbed for Phase Activation)
 """
 

@@ -1,4 +1,4 @@
-﻿"""
+"""
 desktop_agent/agent.py - JARVIS Local System Control Bridge
 
 A lightweight local HTTP server running on port 5000 using only Python standard libraries.

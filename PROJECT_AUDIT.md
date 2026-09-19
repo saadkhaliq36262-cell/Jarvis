@@ -1,4 +1,4 @@
-﻿# JARVIS System Architecture & Project Audit
+# JARVIS System Architecture & Project Audit
 
 **Document Version:** 1.0.0  
 **Date:** September 19, 2026  

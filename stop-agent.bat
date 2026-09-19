@@ -1,4 +1,4 @@
-﻿@echo off
+@echo off
 title Stop JARVIS Local Agent
 cls
 echo ================================================================

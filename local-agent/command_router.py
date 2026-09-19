@@ -1,4 +1,4 @@
-﻿"""
+"""
 local-agent/command_router.py - Secure Tool Execution Router & Permission Enforcer
 """
 

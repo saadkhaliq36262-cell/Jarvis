@@ -1,4 +1,4 @@
-﻿"""
+"""
 local-agent/tools/__init__.py - Master Tool Registry
 """
 

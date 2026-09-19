@@ -1,4 +1,4 @@
-﻿"""
+"""
 local-agent/websocket_server.py - Real-Time Bidirectional WebSocket Protocol
 """
 

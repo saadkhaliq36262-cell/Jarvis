@@ -1,4 +1,4 @@
-﻿"""
+"""
 local-agent/tools/files.py - Sandboxed Safe File Operations
 """
 

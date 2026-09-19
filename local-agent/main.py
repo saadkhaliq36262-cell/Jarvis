@@ -1,10 +1,14 @@
-﻿"""
-local-agent/main.py - Windows Local Agent Server (FastAPI + WebSockets)
-"""
-
+import os
+import sys
 import asyncio
 from contextlib import asynccontextmanager
 from typing import Dict, Any, Optional
+
+# Ensure local-agent directory is in sys.path
+agent_dir = os.path.dirname(os.path.abspath(__file__))
+if agent_dir not in sys.path:
+    sys.path.insert(0, agent_dir)
+
 from pydantic import BaseModel
 from fastapi import FastAPI, WebSocket, Query, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -157,4 +161,4 @@ if __name__ == "__main__":
     print(f"  Dry-Run Mode: {config.DRY_RUN}")
     print(f"  Auth Token:   {'Configured' if config.TOKEN else 'None'}")
     print("==================================================")
-    uvicorn.run("main:app", host=config.HOST, port=config.PORT, reload=True)
+    uvicorn.run("main:app", host=config.HOST, port=config.PORT, app_dir=agent_dir, reload=False)

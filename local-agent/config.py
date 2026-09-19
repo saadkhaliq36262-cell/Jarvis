@@ -1,4 +1,4 @@
-﻿"""
+"""
 local-agent/config.py - Windows Local Agent Configuration
 """
 

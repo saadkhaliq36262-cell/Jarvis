@@ -1,4 +1,4 @@
-﻿"""
+"""
 local-agent/tools/screenshots.py - Windows Desktop Screenshot Capture
 """
 

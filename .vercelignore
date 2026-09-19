@@ -1,0 +1,7 @@
+local-agent/
+desktop_agent/
+backend/
+*.bat
+PROJECT_AUDIT.md
+SETUP_REQUIREMENTS.md
+logs/

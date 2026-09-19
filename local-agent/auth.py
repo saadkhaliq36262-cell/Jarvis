@@ -1,4 +1,4 @@
-﻿"""
+"""
 local-agent/auth.py - Token-based Security Authentication
 """
 

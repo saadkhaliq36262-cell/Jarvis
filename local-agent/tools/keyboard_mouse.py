@@ -1,4 +1,4 @@
-﻿"""
+"""
 local-agent/tools/keyboard_mouse.py - Windows Keyboard & Mouse Automation
 """
 
