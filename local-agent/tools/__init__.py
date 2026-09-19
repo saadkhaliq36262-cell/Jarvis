@@ -8,6 +8,7 @@ from .windows import (
     GetSystemTelemetryTool,
     AdjustVolumeTool,
     LockWorkstationTool,
+    OpenBrowserUrlTool,
     ShutdownSystemTool,
     RestartSystemTool,
     SleepSystemTool
@@ -24,6 +25,7 @@ ALL_TOOLS: List[BaseTool] = [
     GetSystemTelemetryTool(),
     AdjustVolumeTool(),
     LockWorkstationTool(),
+    OpenBrowserUrlTool(),
     ShutdownSystemTool(),
     RestartSystemTool(),
     SleepSystemTool(),

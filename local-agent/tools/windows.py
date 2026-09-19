@@ -6,9 +6,44 @@ import sys
 import ctypes
 import platform
 import subprocess
+import webbrowser
 import psutil
 from typing import Dict, Any
 from .base import BaseTool
+
+class OpenBrowserUrlTool(BaseTool):
+    name = "open_browser_url"
+    description = "Opens a web URL in the system's default browser (Chrome, Edge, etc.) on Windows without popup blockers."
+    parameters_schema = {
+        "type": "object",
+        "properties": {
+            "url": {"type": "string", "description": "The full target URL to open (e.g. https://www.youtube.com)"}
+        },
+        "required": ["url"]
+    }
+
+    async def execute(self, params: Dict[str, Any], dry_run: bool = False) -> Dict[str, Any]:
+        url = str(params.get("url", "")).strip()
+        if not url:
+            return {"success": False, "message": "No URL provided to open."}
+
+        if not url.startswith("http://") and not url.startswith("https://"):
+            url = "https://" + url
+
+        if dry_run:
+            return {"dry_run": True, "message": f"[DRY RUN] Would open URL: {url}"}
+
+        try:
+            webbrowser.open(url, new=2)
+            return {"success": True, "message": f"Successfully opened {url} in Windows browser."}
+        except Exception as e:
+            # Fallback to os.startfile on Windows
+            try:
+                import os
+                os.startfile(url)
+                return {"success": True, "message": f"Successfully opened {url} via Windows shell."}
+            except Exception as e2:
+                return {"success": False, "message": f"Failed to open browser URL: {str(e2)}"}
 
 class GetSystemTelemetryTool(BaseTool):
     name = "get_system_telemetry"

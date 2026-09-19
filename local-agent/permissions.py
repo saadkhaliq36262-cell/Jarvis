@@ -18,15 +18,16 @@ TOOL_PERMISSIONS: Dict[str, PermissionLevel] = {
     "get_system_info": PermissionLevel.SAFE,
     "adjust_volume": PermissionLevel.SAFE,
     "take_screenshot": PermissionLevel.SAFE,
+    "lock_workstation": PermissionLevel.SAFE,
+    "open_browser_url": PermissionLevel.SAFE,
     
-    # Process & Apps (Safe to Launched, Confirmation to Kill)
+    # Process & Apps (Safe to Launch, Confirmation to Kill)
     "list_processes": PermissionLevel.SAFE,
     "launch_application": PermissionLevel.SAFE,
     "terminate_process": PermissionLevel.CONFIRMATION_REQUIRED,
     
-    # OS Actions (Confirmation required)
+    # OS Power Actions (Confirmation required)
     "shutdown_system": PermissionLevel.CONFIRMATION_REQUIRED,
-    "lock_workstation": PermissionLevel.CONFIRMATION_REQUIRED,
     "sleep_system": PermissionLevel.CONFIRMATION_REQUIRED,
     "restart_system": PermissionLevel.CONFIRMATION_REQUIRED,
     

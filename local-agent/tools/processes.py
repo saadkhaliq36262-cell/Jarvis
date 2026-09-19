@@ -1,24 +1,25 @@
-"""
-local-agent/tools/processes.py - Windows Process Listing & Application Launching
-"""
-
+import sys
 import subprocess
 import psutil
 from typing import Dict, Any, List
 from .base import BaseTool
 
 SAFE_APP_ALLOWLIST = {
-    "notepad": ["notepad.exe"],
-    "calculator": ["calc.exe"],
-    "calc": ["calc.exe"],
-    "explorer": ["explorer.exe"],
-    "task manager": ["taskmgr.exe"],
-    "taskmgr": ["taskmgr.exe"],
-    "cmd": ["cmd.exe"],
-    "terminal": ["cmd.exe"],
-    "chrome": ["chrome.exe"],
-    "edge": ["msedge.exe"],
-    "vscode": ["code.cmd"]
+    "notepad": "notepad.exe",
+    "calculator": "calc.exe",
+    "calc": "calc.exe",
+    "paint": "mspaint.exe",
+    "mspaint": "mspaint.exe",
+    "explorer": "explorer.exe",
+    "file explorer": "explorer.exe",
+    "task manager": "taskmgr.exe",
+    "taskmgr": "taskmgr.exe",
+    "cmd": "cmd.exe",
+    "terminal": "cmd.exe",
+    "command prompt": "cmd.exe",
+    "chrome": "chrome.exe",
+    "edge": "msedge.exe",
+    "vscode": "code.cmd"
 }
 
 class ListProcessesTool(BaseTool):
@@ -72,9 +73,12 @@ class LaunchApplicationTool(BaseTool):
 
         if app_name in SAFE_APP_ALLOWLIST:
             try:
-                cmd = SAFE_APP_ALLOWLIST[app_name]
-                subprocess.Popen(cmd)
-                return {"success": True, "message": f"Successfully launched '{app_name}'."}
+                target_exe = SAFE_APP_ALLOWLIST[app_name]
+                if sys.platform == "win32":
+                    subprocess.Popen(f'start "" "{target_exe}"', shell=True)
+                else:
+                    subprocess.Popen([target_exe])
+                return {"success": True, "message": f"Successfully launched '{app_name}' on Windows desktop."}
             except Exception as e:
                 return {"success": False, "message": f"Failed to launch '{app_name}': {str(e)}"}
         

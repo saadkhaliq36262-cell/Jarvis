@@ -630,17 +630,39 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // --- 11. Client Action Executor (Web & PC Control) ---
-    async function executeClientAction(action) {
+    // --- 11. Central Action Dispatcher (Web & PC Control) ---
+    async function executeCentralAction(action) {
         if (!action || !action.type) return null;
 
-        // 1. Browser Actions (Web Mode)
-        if (action.type === "OPEN_URL" || action.type === "WEB_SEARCH") {
-            try {
-                window.open(action.target, "_blank", "noopener,noreferrer");
-            } catch (e) {
-                console.warn("Popup blocked or direct window.open restricted:", e);
+        // 1. Browser Actions (Web Mode with Local Bridge Popup Bypass)
+        if (action.type === "OPEN_URL") {
+            let executedLocally = false;
+
+            // If Local Agent is active, open URL via Windows system default browser to bypass popup blockers
+            if (isBridgeOnline) {
+                try {
+                    const localRes = await executeLocalTool("open_browser_url", { url: action.target }, false);
+                    if (localRes.status === "executed" || localRes.status === "dry_run") {
+                        executedLocally = true;
+                        action.status = "executed";
+                        showToast(`Opened ${action.label || action.target} on default browser`);
+                    }
+                } catch (e) {
+                    console.warn("Local browser launch failed, falling back to window.open:", e);
+                }
             }
+
+            // Fallback to client-side window.open
+            if (!executedLocally) {
+                try {
+                    window.open(action.target, "_blank", "noopener,noreferrer");
+                    action.status = "executed";
+                    showToast(`Opened ${action.label || action.target}`);
+                } catch (e) {
+                    console.warn("Popup blocked or direct window.open restricted:", e);
+                }
+            }
+
             return { status: "executed", message: `Opened ${action.label || action.target}` };
         }
 
@@ -648,17 +670,17 @@ document.addEventListener("DOMContentLoaded", () => {
         let toolName = null;
         let toolParams = {};
 
-        if (action.type === "SYSTEM_SHUTDOWN") {
+        if (action.type === "SYSTEM_APP" || action.type === "OPEN_APPLICATION") {
+            toolName = "launch_application";
+            toolParams = { app_name: action.target };
+        } else if (action.type === "SYSTEM_LOCK") {
+            toolName = "lock_workstation";
+        } else if (action.type === "SYSTEM_SHUTDOWN") {
             toolName = "shutdown_system";
         } else if (action.type === "SYSTEM_RESTART") {
             toolName = "restart_system";
         } else if (action.type === "SYSTEM_SLEEP") {
             toolName = "sleep_system";
-        } else if (action.type === "SYSTEM_LOCK") {
-            toolName = "lock_workstation";
-        } else if (action.type === "SYSTEM_APP") {
-            toolName = "launch_application";
-            toolParams = { app_name: action.target };
         } else if (action.type === "SYSTEM_VOLUME") {
             toolName = "adjust_volume";
             toolParams = { action: action.target };
@@ -677,16 +699,19 @@ document.addEventListener("DOMContentLoaded", () => {
             const execRes = await executeLocalTool(toolName, toolParams, false);
 
             if (execRes.status === "confirmation_required") {
+                action.status = "pending";
                 requestUserConfirmation(toolName, toolParams, execRes.message);
                 return { status: "confirmation_pending" };
             }
 
             if (execRes.status === "dry_run") {
+                action.status = "executed";
                 showToast(`[DRY_RUN] ${execRes.message}`);
                 return { status: "executed", message: execRes.message };
             }
 
             if (execRes.status === "executed") {
+                action.status = "executed";
                 showToast(`Executed ${toolName}`);
                 return { status: "executed", data: execRes.data };
             }
@@ -696,6 +721,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
         return null;
     }
+
+    // Alias for backward compatibility
+    const executeClientAction = executeCentralAction;
 
     // --- 12. Local Fast Check for Time/Date ---
     function checkLocalTimeCommands(message) {
