@@ -48,13 +48,14 @@ const DEFAULT_MODEL = "gemini-3.6-flash";
 
 // Fast deterministic matcher for explicit commands (English & Roman Urdu)
 function matchExplicitCommands(message) {
-  const clean = (message || "").toLowerCase()
-    .replace(/^(hey\s+|hi\s+|ok\s+)?jarvis[,\s:]*/i, "")
+  let clean = (message || "").toLowerCase()
+    .replace(/^(hey\s+|hi\s+|ok\s+|please\s+|kindly\s+)?jarvis[,\s:]*/i, "")
+    .replace(/^(please\s+|kindly\s+|can\s+you\s+|could\s+you\s+)/i, "")
     .trim()
     .replace(/[.?!]+$/, "");
 
   // 1. System Shutdown / Turn Off PC (Explicit)
-  if (/\b(?:turn\s+off\s+(?:my\s+)?(?:laptop|pc|computer|system)|shutdown\s+(?:my\s+)?(?:laptop|pc|computer|system)|power\s+off\s+(?:my\s+)?(?:laptop|pc|computer)|laptop\s+band\s+karo|pc\s+band\s+karo|laptop\s+shutdown\s+karo|pc\s+shutdown\s+karo)\b/i.test(clean)) {
+  if (/\b(?:turn\s+off\s+(?:my\s+|the\s+)?(?:laptop|pc|computer|system)|shutdown\s+(?:my\s+|the\s+)?(?:laptop|pc|computer|system)|power\s+off\s+(?:my\s+|the\s+)?(?:laptop|pc|computer)|laptop\s+band\s+karo|pc\s+band\s+karo|laptop\s+shutdown\s+karo|pc\s+shutdown\s+karo)\b/i.test(clean)) {
     return {
       reply: "Your laptop will shut down. A security confirmation is required to proceed, sir.",
       speak: true,
@@ -64,7 +65,7 @@ function matchExplicitCommands(message) {
   }
 
   // 2. System Restart / Reboot (Explicit)
-  if (/\b(?:restart\s+(?:my\s+)?(?:laptop|pc|computer|system)|reboot\s+(?:my\s+)?(?:laptop|pc|computer|system)|laptop\s+restart\s+karo|pc\s+restart\s+karo)\b/i.test(clean)) {
+  if (/\b(?:restart\s+(?:my\s+|the\s+)?(?:laptop|pc|computer|system)|reboot\s+(?:my\s+|the\s+)?(?:laptop|pc|computer|system)|laptop\s+restart\s+karo|pc\s+restart\s+karo)\b/i.test(clean)) {
     return {
       reply: "Your laptop will restart. A security confirmation is required to proceed, sir.",
       speak: true,
@@ -74,7 +75,7 @@ function matchExplicitCommands(message) {
   }
 
   // 3. System Sleep / Standby (Explicit)
-  if (/\b(?:sleep\s+(?:my\s+)?(?:laptop|pc|computer|system)|put\s+(?:my\s+)?(?:laptop|pc|computer)\s+to\s+sleep|laptop\s+sleep\s+karo)\b/i.test(clean)) {
+  if (/\b(?:sleep\s+(?:my\s+|the\s+)?(?:laptop|pc|computer|system)|put\s+(?:my\s+|the\s+)?(?:laptop|pc|computer)\s+to\s+sleep|laptop\s+sleep\s+karo)\b/i.test(clean)) {
     return {
       reply: "Putting your laptop to sleep now, sir.",
       speak: true,
@@ -84,7 +85,7 @@ function matchExplicitCommands(message) {
   }
 
   // 4. Workstation Lock (Explicit)
-  if (/\b(?:lock\s+my\s+(?:laptop|pc|computer|workstation)|lock\s+(?:screen|windows|system|workstation)|laptop\s+lock\s+karo|pc\s+lock\s+karo)\b/i.test(clean)) {
+  if (/\b(?:lock\s+(?:my\s+|the\s+)?(?:laptop|pc|computer|workstation)|lock\s+(?:screen|windows|system|workstation)|laptop\s+lock\s+karo|pc\s+lock\s+karo)\b/i.test(clean)) {
     return {
       reply: "Locking your workstation screen now, sir.",
       speak: true,
@@ -94,7 +95,7 @@ function matchExplicitCommands(message) {
   }
 
   // 5. Safe Desktop App Launch (Explicit)
-  const appMatch = clean.match(/\b(?:open|launch|start)\s+(notepad|calculator|calc|paint|mspaint|task manager|taskmgr|file explorer|explorer|cmd|terminal|chrome|edge|vscode)\b/i);
+  const appMatch = clean.match(/\b(?:open|launch|start)\s+(?:the\s+|my\s+|app\s+)?(notepad|calculator|calc|paint|mspaint|task manager|taskmgr|file explorer|explorer|cmd|terminal|chrome|edge|vscode)\b/i);
   if (appMatch) {
     let app = appMatch[1].toLowerCase();
     if (app === "calc") app = "calculator";
@@ -111,7 +112,7 @@ function matchExplicitCommands(message) {
   }
 
   // 6. Screenshot Capture (Explicit)
-  if (/\b(?:take\s+(?:a\s+)?screenshot|capture\s+(?:my\s+)?screen|screenshot\s+lo)\b/i.test(clean)) {
+  if (/\b(?:take\s+(?:a\s+|the\s+)?screenshot|capture\s+(?:my\s+|the\s+)?screen|screenshot\s+lo)\b/i.test(clean)) {
     return {
       reply: "Capturing a screenshot of your primary display now, sir.",
       speak: true,
@@ -121,7 +122,7 @@ function matchExplicitCommands(message) {
   }
 
   // 7. Volume Control (Explicit)
-  if (/\b(?:mute(?:\s+volume|\s+audio)?|volume\s+mute|volume\s+band\s+karo)\b/i.test(clean)) {
+  if (/\b(?:mute(?:\s+the)?(?:\s+volume|\s+audio)?|volume\s+mute|volume\s+band\s+karo)\b/i.test(clean)) {
     return {
       reply: "Muting system audio, sir.",
       speak: true,
@@ -131,20 +132,22 @@ function matchExplicitCommands(message) {
   }
 
   // 8. YouTube Search / Video Launch (Explicit)
-  const ytSearchMatch = clean.match(/(?:(?:open|launch)\s+youtube\s+(?:and\s+search|and\s+play|for)\s+|youtube\s+open\s+karo\s+(?:aur\s+)?(?:search\s+karo\s+|video\s+lagao\s+|play\s+karo\s+)?)(.+)/i);
-  if (ytSearchMatch) {
+  const ytSearchMatch = clean.match(/(?:(?:open|launch)\s+(?:the\s+)?youtube\s+(?:and\s+search(?:\s+for)?|and\s+play|for)\s+|search\s+(?:on\s+|in\s+)?(?:the\s+)?youtube\s+(?:for\s+)?|youtube\s+(?:par\s+)?(?:search\s+karo\s+|video\s+lagao\s+|play\s+karo\s+)?)(.+)/i);
+  if (ytSearchMatch && !clean.startsWith("open youtube") && !clean.startsWith("open the youtube")) {
     const query = ytSearchMatch[1].replace(/ki\s+video\s+lagao|video\s+lagao|play\s+karo/i, "").trim();
-    const targetUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
-    return {
-      reply: `Opening YouTube and searching for "${query}", sir.`,
-      speak: true,
-      intent: "OPEN_URL",
-      action: { type: "OPEN_URL", target: targetUrl, label: `YouTube: ${query}` }
-    };
+    if (query && query !== "youtube" && query !== "the youtube") {
+      const targetUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
+      return {
+        reply: `Opening YouTube and searching for "${query}", sir.`,
+        speak: true,
+        intent: "OPEN_URL",
+        action: { type: "OPEN_URL", target: targetUrl, label: `YouTube: ${query}` }
+      };
+    }
   }
 
   // YouTube Homepage Open
-  if (/\b(?:open|launch|start|go to)\s+youtube\b/i.test(clean) || /\byoutube\s+open\s+karo\b/i.test(clean) || clean === "youtube") {
+  if (/\b(?:open|launch|start|go to|browse)\s+(?:the\s+|up\s+|website\s+)?youtube\b/i.test(clean) || /\byoutube\s+open\s+karo\b/i.test(clean) || clean === "youtube" || clean === "open the youtube" || clean === "the youtube") {
     return {
       reply: "Opening YouTube for you now, sir.",
       speak: true,
@@ -153,8 +156,38 @@ function matchExplicitCommands(message) {
     };
   }
 
-  // 9. TradingView / Trading Charts (Explicit)
-  if (/\b(?:open|launch|go to)\s+(?:tradingview|trading\s+chart|crypto\s+chart)\b/i.test(clean) || /\btradingview\s+open\s+karo\b/i.test(clean)) {
+  // 9. Google Search & Web Search (Explicit)
+  const googleSearchMatch = clean.match(/(?:search\s+(?:on\s+|in\s+)?(?:the\s+)?google\s+(?:for\s+)?|google\s+search\s+|google\s+par\s+search\s+karo\s+)(.+)/i);
+  if (googleSearchMatch) {
+    const query = googleSearchMatch[1].trim();
+    if (query) {
+      const targetUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+      return {
+        reply: `Searching Google for "${query}", sir.`,
+        speak: true,
+        intent: "OPEN_URL",
+        action: { type: "OPEN_URL", target: targetUrl, label: `Google: ${query}` }
+      };
+    }
+  }
+
+  // General Web Search (e.g. "search the web for X", "search web for X", "search for X")
+  const webSearchMatch = clean.match(/(?:search\s+(?:the\s+web|web|online|internet)\s+(?:for\s+)?|search\s+for\s+)(.+)/i);
+  if (webSearchMatch) {
+    const query = webSearchMatch[1].trim();
+    if (query) {
+      const targetUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+      return {
+        reply: `Searching the web for "${query}", sir.`,
+        speak: true,
+        intent: "OPEN_URL",
+        action: { type: "OPEN_URL", target: targetUrl, label: `Web Search: ${query}` }
+      };
+    }
+  }
+
+  // 10. TradingView / Trading Charts (Explicit)
+  if (/\b(?:open|launch|go to)\s+(?:the\s+)?(?:tradingview|trading\s+chart|crypto\s+chart)\b/i.test(clean) || /\btradingview\s+open\s+karo\b/i.test(clean)) {
     return {
       reply: "Opening TradingView charts for you now, sir.",
       speak: true,
@@ -163,9 +196,9 @@ function matchExplicitCommands(message) {
     };
   }
 
-  // 10. Common External Platforms (Explicit Open)
-  if (/\b(?:open|launch|go to)\s+(google|github|linkedin|twitter|reddit|wikipedia)\b/i.test(clean)) {
-    const match = clean.match(/\b(google|github|linkedin|twitter|reddit|wikipedia)\b/i);
+  // 11. Common External Platforms (Explicit Open)
+  if (/\b(?:open|launch|go to)\s+(?:the\s+|website\s+)?(google|github|linkedin|twitter|reddit|wikipedia|chatgpt)\b/i.test(clean)) {
+    const match = clean.match(/\b(google|github|linkedin|twitter|reddit|wikipedia|chatgpt)\b/i);
     const domain = match ? match[1].toLowerCase() : "google";
     const urls = {
       google: "https://www.google.com",
@@ -173,7 +206,8 @@ function matchExplicitCommands(message) {
       linkedin: "https://www.linkedin.com",
       twitter: "https://www.x.com",
       reddit: "https://www.reddit.com",
-      wikipedia: "https://www.wikipedia.org"
+      wikipedia: "https://www.wikipedia.org",
+      chatgpt: "https://chat.openai.com"
     };
     return {
       reply: `Opening ${domain.charAt(0).toUpperCase() + domain.slice(1)} for you, sir.`,
